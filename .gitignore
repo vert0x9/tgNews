@@ -1,0 +1,8 @@
+/tgnews
+*.json
+*.log
+*.csv
+*.session
+*.DS_Store
+/__pycache__/
+/config/*
