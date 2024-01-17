@@ -4,15 +4,38 @@ from telethon.tl.types import PeerChannel
 from telethon.errors import SessionPasswordNeededError
 from telethon.sessions import MemorySession
 from telethon.sessions import StringSession
+from telethon.tl.functions.channels import GetFullChannelRequest
 
 from get_channels import get_channels_from_google_doc
 from config import auth
 
-import datetime
 from datetime import datetime, timezone
+import mysql.connector
+import datetime
 import csv
-from telethon.tl.functions.channels import GetFullChannelRequest
 import os
+import logging
+
+
+
+"""
+1. Authenticate with the Telegram API. 
+2. Get channel list from Google Doc.
+3. Get messages from channels.
+4. Write messages to database.
+
+
+"""
+
+# Messing with logging. 
+
+handler = logging.FileHandler('logs.log')
+logging.basicConfig(level=logging.CRITICAL, format='%(asctime)s %(levelname)s %(name)s %(message)s')
+logger = logging.getLogger(__name__)
+logger.addHandler(handler)
+
+
+
 
 
 
@@ -28,6 +51,8 @@ class TelegramNews:
         self.client = None
 
     def authenticate(self):
+
+
         """
         Authenticates the user with the Telegram API.
 
@@ -40,30 +65,43 @@ class TelegramNews:
         Raises:
             SessionPasswordNeededError: If the user account has a password set and requires password authentication.
         """
-        self.client = TelegramClient(MemorySession(), self.api_id, self.api_hash)
-        self.client.connect()
-        if not self.client.is_user_authorized():
-            try:
-                # Try String Session Authentication
-                session_string = self.session_id
-                self.client = TelegramClient(StringSession(session_string), self.api_id, self.api_hash)
-                self.client.connect()
-                if not self.client.is_user_authorized():
-                    self.client.send_code_request(self.phone)
-                    try:
-                        self.client.sign_in(self.phone, input('Enter the code: '))
-                    except SessionPasswordNeededError:
-                        self.client.sign_in(password=self.password)
-            except ValueError:
-                # Fall back to Memory Session Authentication
-                self.client = TelegramClient(MemorySession(), self.api_id, self.api_hash)
-                self.client.connect()
-                if not self.client.is_user_authorized():
-                    self.client.send_code_request(self.phone)
-                    try:
-                        self.client.sign_in(self.phone, input('Enter the code: '))
-                    except SessionPasswordNeededError:
-                        self.client.sign_in(password=self.password)
+
+        try:
+            logger.debug("Initializing Telegram client with MemorySession")
+            self.client = TelegramClient(MemorySession(), self.api_id, self.api_hash)
+            self.client.connect()
+            if not self.client.is_user_authorized():
+                try:
+                    logger.debug("Trying String Session Authentication")
+                    session_string = self.session_id
+                    self.client = TelegramClient(StringSession(session_string), self.api_id, self.api_hash)
+                    self.client.connect()
+                    if not self.client.is_user_authorized():
+                        logger.debug("Sending code request")
+                        self.client.send_code_request(self.phone)
+                        try:
+                            logger.debug("Signing in with code")
+                            self.client.sign_in(self.phone, input('Enter the code: '))
+                        except SessionPasswordNeededError:
+                            logger.debug("Signing in with password")
+                            self.client.sign_in(password=self.password)
+                except ValueError:
+                    logger.debug("Falling back to Memory Session Authentication")
+                    self.client = TelegramClient(MemorySession(), self.api_id, self.api_hash)
+                    self.client.connect()
+                    if not self.client.is_user_authorized():
+                        logger.debug("Sending code request")
+                        self.client.send_code_request(self.phone)
+                        try:
+                            logger.debug("Signing in with code")
+                            self.client.sign_in(self.phone, input('Enter the code: '))
+                        except SessionPasswordNeededError:
+                            logger.debug("Signing in with password")
+                            self.client.sign_in(password=self.password)
+        except Exception as e:
+            logger.critical(f"Error occurred during authentication: {e}")
+
+
 
     def get_messages(self):
         """
@@ -74,6 +112,8 @@ class TelegramNews:
         """
         start_date = datetime(2023, 12, 24, tzinfo=timezone.utc)
         end_date = datetime(2023, 12, 31, tzinfo=timezone.utc)
+
+        
 
         with open('messages.csv', 'a', newline='') as csvfile:
             writer = csv.writer(csvfile)

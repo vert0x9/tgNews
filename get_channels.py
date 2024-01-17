@@ -26,8 +26,7 @@ def get_channels_from_google_doc():
     except Exception as e:
         logging.exception("An exception with Google Dock occurred")
 
-result = get_channels_from_google_doc()
 
-print(result)
+result = get_channels_from_google_doc()
 
 
