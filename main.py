@@ -152,9 +152,8 @@ def get_messages(client):
     with open('messages.csv', 'a', newline='') as csvfile:
         writer = csv.writer(csvfile)
 
-        # Opening connection to DB. 
+      # Opening connection to DB. 
         db_connection = open_database_connection()
-        cursor = db_connection.cursor()
         
 
         # Check if the file is empty
@@ -190,17 +189,21 @@ def get_messages(client):
                     for message in posts.messages:
                         val = (message.date, message.id, channel_creation_date, channel_subscribers_count, channel_name, message.views, message.message)
                         try:
+                           
+                            cursor = db_connection.cursor()
                             cursor.execute(sql, val)
-                            db_connection.commit()
                             logger.debug("Successfully wrote to the database: " + str(message.id))
+                            
                         except Exception as e:
                             logger.critical(f"Failed to write to the database: {e}")
-                            logger.critical(f"{sql},{val}") 
+                            #logger.critical(f"{sql},{val}") 
             
-            cursor.close()
-            db_connection.close()
-            logger.debug("Closed cursor connection")
-            logger.debug("Closed database connection")
+    db_connection.commit()        
+    db_connection.close()
+    logger.debug("Closed database connection")
+    cursor.close()
+    logger.debug("Closed cursor connection")
+   
 
         
 
